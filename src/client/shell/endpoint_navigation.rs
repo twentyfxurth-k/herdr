@@ -42,6 +42,33 @@ impl ClientShellState {
         );
     }
 
+    pub(super) fn toggle_machine_collapse(
+        &mut self,
+        endpoint_id: ClientEndpointId,
+        outcome: &mut ClientShellInput,
+    ) {
+        if !self.collapsed_endpoints.remove(&endpoint_id) {
+            self.collapsed_endpoints.insert(endpoint_id);
+        }
+        self.persist_chrome_preferences(outcome);
+        outcome.repaint = true;
+    }
+
+    pub(super) fn collapse_other_machines(
+        &mut self,
+        endpoint_id: &ClientEndpointId,
+        outcome: &mut ClientShellInput,
+    ) {
+        self.collapsed_endpoints = self
+            .endpoints
+            .iter()
+            .map(|endpoint| endpoint.endpoint_id.clone())
+            .filter(|other| other != endpoint_id)
+            .collect();
+        self.persist_chrome_preferences(outcome);
+        outcome.repaint = true;
+    }
+
     pub(super) fn handle_endpoint_machine_click(
         &mut self,
         point: (u16, u16),
@@ -63,10 +90,7 @@ impl ClientShellState {
                     || self.endpoint_is_online(&endpoint_id)
                     || self.endpoint_status(&endpoint_id) == Some(ClientEndpointStatus::Disabled)))
         {
-            if !self.collapsed_endpoints.remove(&endpoint_id) {
-                self.collapsed_endpoints.insert(endpoint_id.clone());
-            }
-            outcome.repaint = true;
+            self.toggle_machine_collapse(endpoint_id.clone(), outcome);
             if !collapse_toggle && endpoint_id.is_local() {
                 self.activate_endpoint(endpoint_id, outcome);
             }
